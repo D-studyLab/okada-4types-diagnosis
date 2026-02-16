@@ -1,17 +1,43 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Target, Heart, Scale, Feather, ArrowRight, RotateCcw, ArrowLeft, Users, AlertTriangle, Sparkles, Share2, ExternalLink, BookOpen, Info, Shield, X } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 // -----------------------------------------------------------------------------
-// Ad Placeholder Component
+// Google AdSense Component
 // -----------------------------------------------------------------------------
-// TODO: Replace with actual Google AdSense or other ad provider code
-const AdPlaceholder = ({ slot, className = '' }) => (
-  <div className={`bg-slate-100 border border-dashed border-slate-300 rounded-lg p-4 text-center text-xs text-slate-400 ${className}`}>
-    {/* 広告コンポーネント配置エリア - slot: {slot} */}
-    <p>広告スペース ({slot})</p>
-  </div>
-);
+// 注意: AdSenseの審査が通った後、広告ユニットを作成してslot IDを設定してください
+// AdSenseダッシュボード → 広告 → 広告ユニット → 新しい広告ユニットを作成
+// 作成後、各AdSenseUnitコンポーネントのslotプロパティにslot IDを設定してください
+const AdSenseUnit = ({ slot, format = 'auto', className = '' }) => {
+  useEffect(() => {
+    try {
+      if (slot) {
+        // slot IDが設定されている場合のみ広告を表示
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      }
+    } catch (err) {
+      console.error('AdSense error:', err);
+    }
+  }, [slot]);
+
+  // slot IDが設定されていない場合は何も表示しない（審査中など）
+  if (!slot) {
+    return null;
+  }
+
+  return (
+    <div className={`ad-container ${className}`}>
+      <ins
+        className="adsbygoogle"
+        style={{ display: 'block' }}
+        data-ad-client="ca-pub-9384193584221337"
+        data-ad-slot={slot}
+        data-ad-format={format}
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+};
 
 // -----------------------------------------------------------------------------
 // Data & Logic Definitions
@@ -447,9 +473,11 @@ export default function App() {
           </h1>
         </header>
 
-        {/* === Ad Placeholder: ヘッダー下 === */}
-        {/* TODO: Google AdSense等の広告コードに置き換え */}
-        {/* <AdPlaceholder slot="header-below" className="mb-6" /> */}
+        {/* === AdSense: ヘッダー下 === */}
+        {/* 広告ユニット作成後、slot IDを設定してください。例: slot="1234567890" */}
+        {step === 'intro' && (
+          <AdSenseUnit slot="" format="auto" className="mb-6" />
+        )}
 
         {/* Content Area */}
         <main className="flex-grow flex flex-col items-center justify-center w-full">
@@ -561,9 +589,8 @@ export default function App() {
           {step === 'result' && resultType && (
             <div className="w-full animate-in zoom-in-95 duration-500 space-y-8 pb-4">
 
-              {/* === Ad Placeholder: 結果表示前 === */}
-              {/* TODO: Google AdSense等の広告コードに置き換え */}
-              {/* <AdPlaceholder slot="result-top" className="mb-4" /> */}
+              {/* === AdSense: 結果表示前 === */}
+              <AdSenseUnit slot="" format="auto" className="mb-4" />
 
               {/* Result Card */}
               <div ref={resultCardRef} className={`relative overflow-hidden rounded-3xl bg-white shadow-2xl border-4 ${resultType.borderColor}`}>
@@ -615,9 +642,8 @@ export default function App() {
                     )}
                   </button>
 
-                  {/* === Ad Placeholder: 結果カード内（シェアボタン下） === */}
-                  {/* TODO: Google AdSense等の広告コードに置き換え */}
-                  {/* <AdPlaceholder slot="result-card-inner" className="mb-6" /> */}
+                  {/* === AdSense: 結果カード内（シェアボタン下） === */}
+                  <AdSenseUnit slot="" format="auto" className="mb-6" />
 
                   {/* Compatibility Section */}
                   <div className="text-left pt-6 border-t border-slate-200">
@@ -700,9 +726,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* === Ad Placeholder: チャートと公式リンクの間 === */}
-              {/* TODO: Google AdSense等の広告コードに置き換え */}
-              {/* <AdPlaceholder slot="between-chart-links" /> */}
+              {/* === AdSense: チャートと公式リンクの間 === */}
+              <AdSenseUnit slot="" format="auto" className="mb-6" />
 
               {/* Official Links & Affiliate */}
               <div className="bg-slate-100 p-5 rounded-xl border border-slate-200">
@@ -737,9 +762,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* === Ad Placeholder: フッター上 === */}
-              {/* TODO: Google AdSense等の広告コードに置き換え */}
-              {/* <AdPlaceholder slot="footer-above" /> */}
+              {/* === AdSense: フッター上 === */}
+              <AdSenseUnit slot="" format="auto" className="mb-6" />
 
               <button
                 onClick={handleStart}
