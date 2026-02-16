@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Target, Heart, Scale, Feather, ArrowRight, RotateCcw, ArrowLeft, Users, AlertTriangle, Sparkles, Share2, ExternalLink, BookOpen, Info, Shield, X } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 // -----------------------------------------------------------------------------
 // Ad Placeholder Component
@@ -283,6 +284,8 @@ export default function App() {
   const [scores, setScores] = useState({ x: 0, y: 0 });
   const [history, setHistory] = useState([]);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const resultCardRef = useRef(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const handleStart = () => {
     setStep('test');
@@ -336,14 +339,97 @@ export default function App() {
   const resultType = step === 'result' ? calculateType() : null;
   const progressPercentage = ((currentQuestion + 1) / questions.length) * 100;
 
-  // X (Twitter) Sharing Logic
-  const handleTwitterShare = () => {
-    if (!resultType) return;
-    const text = `私の欲求タイプは【${resultType.name}】でした！\nキーワード：${resultType.keyword}\n\n#岡田斗司夫4タイプ診断`;
-    // TODO: 実際に公開したURLに差し替えてください
-    // const url = "https://your-app-url.vercel.app";
-    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, '_blank');
+  // X (Twitter) Sharing Logic with Image
+  const handleTwitterShare = async () => {
+    if (!resultType || !resultCardRef.current) return;
+    
+    setIsGeneratingImage(true);
+    
+    try {
+      // 結果カードを画像化
+      const canvas = await html2canvas(resultCardRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // 高解像度
+        logging: false,
+        useCORS: true,
+      });
+      
+      // CanvasをBlobに変換
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setIsGeneratingImage(false);
+          return;
+        }
+        
+        const text = `私の欲求タイプは【${resultType.name}】でした！\nキーワード：${resultType.keyword}\n\n#岡田斗司夫4タイプ診断`;
+        const url = "https://okada-4types.vercel.app/";
+        
+        // Web Share APIが使える場合（主にモバイル）
+        if (navigator.share && navigator.canShare) {
+          try {
+            const file = new File([blob], `okada-4types-${resultType.name}.png`, { type: 'image/png' });
+            
+            // Web Share APIで画像とテキストを一緒に共有
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: `岡田斗司夫の4タイプ診断 - ${resultType.name}`,
+                text: text,
+                url: url,
+                files: [file],
+              });
+              setIsGeneratingImage(false);
+              return;
+            }
+          } catch (shareError) {
+            // Web Share APIがキャンセルされた場合など
+            if (shareError.name !== 'AbortError') {
+              console.error('Web Share API エラー:', shareError);
+            }
+            setIsGeneratingImage(false);
+            return;
+          }
+        }
+        
+        // Web Share APIが使えない場合のフォールバック
+        try {
+          // クリップボードに画像をコピー（デスクトップ）
+          const item = new ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          
+          // Twitterの共有URLを開く
+          const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+          
+          alert('診断結果の画像をクリップボードにコピーしました！\nTwitterで画像を貼り付けて投稿してください。');
+          window.open(shareUrl, '_blank');
+        } catch (clipboardError) {
+          // クリップボードAPIが使えない場合、画像をダウンロード
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = `okada-4types-${resultType.name}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+          
+          const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+          
+          alert('診断結果の画像をダウンロードしました！\nTwitterで画像を添付して投稿してください。');
+          window.open(shareUrl, '_blank');
+        }
+        
+        setIsGeneratingImage(false);
+      }, 'image/png');
+    } catch (error) {
+      console.error('画像生成エラー:', error);
+      setIsGeneratingImage(false);
+      
+      // フォールバック: 画像なしで共有
+      const text = `私の欲求タイプは【${resultType.name}】でした！\nキーワード：${resultType.keyword}\n\n#岡田斗司夫4タイプ診断`;
+      const url = "https://okada-4types.vercel.app/";
+      const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+      window.open(shareUrl, '_blank');
+    }
   };
 
   const plotX = clamp(50 + (scores.x * 8), 5, 95);
@@ -480,7 +566,7 @@ export default function App() {
               {/* <AdPlaceholder slot="result-top" className="mb-4" /> */}
 
               {/* Result Card */}
-              <div className={`relative overflow-hidden rounded-3xl bg-white shadow-2xl border-4 ${resultType.borderColor}`}>
+              <div ref={resultCardRef} className={`relative overflow-hidden rounded-3xl bg-white shadow-2xl border-4 ${resultType.borderColor}`}>
                 <div className={`absolute top-0 left-0 w-full h-24 ${resultType.color} opacity-10`}></div>
                 <div className="relative p-8 text-center">
                   <div className={`inline-flex p-4 rounded-full ${resultType.color} text-white mb-4 shadow-md`}>
@@ -514,9 +600,19 @@ export default function App() {
                   {/* X (Twitter) Share Button */}
                   <button
                     onClick={handleTwitterShare}
-                    className="w-full mb-6 py-3 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                    disabled={isGeneratingImage}
+                    className="w-full mb-6 py-3 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                     <span className="font-bold text-lg">𝕏</span> 結果をポストする
+                    {isGeneratingImage ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        <span>画像を生成中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-bold text-lg">𝕏</span> 結果をポストする
+                      </>
+                    )}
                   </button>
 
                   {/* === Ad Placeholder: 結果カード内（シェアボタン下） === */}
