@@ -1,43 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Target, Heart, Scale, Feather, ArrowRight, RotateCcw, ArrowLeft, Users, AlertTriangle, Sparkles, Share2, ExternalLink, BookOpen, Info, Shield, X } from 'lucide-react';
-import html2canvas from 'html2canvas';
-
-// -----------------------------------------------------------------------------
-// Google AdSense Component
-// -----------------------------------------------------------------------------
-// 注意: AdSenseの審査が通った後、広告ユニットを作成してslot IDを設定してください
-// AdSenseダッシュボード → 広告 → 広告ユニット → 新しい広告ユニットを作成
-// 作成後、各AdSenseUnitコンポーネントのslotプロパティにslot IDを設定してください
-const AdSenseUnit = ({ slot, format = 'auto', className = '' }) => {
-  useEffect(() => {
-    try {
-      if (slot) {
-        // slot IDが設定されている場合のみ広告を表示
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      }
-    } catch (err) {
-      console.error('AdSense error:', err);
-    }
-  }, [slot]);
-
-  // slot IDが設定されていない場合は何も表示しない（審査中など）
-  if (!slot) {
-    return null;
-  }
-
-  return (
-    <div className={`ad-container ${className}`}>
-      <ins
-        className="adsbygoogle"
-        style={{ display: 'block' }}
-        data-ad-client="ca-pub-9384193584221337"
-        data-ad-slot={slot}
-        data-ad-format={format}
-        data-full-width-responsive="true"
-      />
-    </div>
-  );
-};
+import React, { useState } from 'react';
+import { Target, Heart, Scale, Feather, ArrowRight, RotateCcw, ArrowLeft, Users, AlertTriangle, Sparkles, ExternalLink, BookOpen, Info, X } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // Data & Logic Definitions
@@ -310,8 +272,6 @@ export default function App() {
   const [scores, setScores] = useState({ x: 0, y: 0 });
   const [history, setHistory] = useState([]);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const resultCardRef = useRef(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const handleStart = () => {
     setStep('test');
@@ -365,97 +325,12 @@ export default function App() {
   const resultType = step === 'result' ? calculateType() : null;
   const progressPercentage = ((currentQuestion + 1) / questions.length) * 100;
 
-  // X (Twitter) Sharing Logic with Image
-  const handleTwitterShare = async () => {
-    if (!resultType || !resultCardRef.current) return;
-    
-    setIsGeneratingImage(true);
-    
-    try {
-      // 結果カードを画像化
-      const canvas = await html2canvas(resultCardRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2, // 高解像度
-        logging: false,
-        useCORS: true,
-      });
-      
-      // CanvasをBlobに変換
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          setIsGeneratingImage(false);
-          return;
-        }
-        
-        const text = `私の欲求タイプは【${resultType.name}】でした！\nキーワード：${resultType.keyword}\n\n#岡田斗司夫4タイプ診断`;
-        const url = "https://okada-4types.vercel.app/";
-        
-        // Web Share APIが使える場合（主にモバイル）
-        if (navigator.share && navigator.canShare) {
-          try {
-            const file = new File([blob], `okada-4types-${resultType.name}.png`, { type: 'image/png' });
-            
-            // Web Share APIで画像とテキストを一緒に共有
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({
-                title: `岡田斗司夫の4タイプ診断 - ${resultType.name}`,
-                text: text,
-                url: url,
-                files: [file],
-              });
-              setIsGeneratingImage(false);
-              return;
-            }
-          } catch (shareError) {
-            // Web Share APIがキャンセルされた場合など
-            if (shareError.name !== 'AbortError') {
-              console.error('Web Share API エラー:', shareError);
-            }
-            setIsGeneratingImage(false);
-            return;
-          }
-        }
-        
-        // Web Share APIが使えない場合のフォールバック
-        try {
-          // クリップボードに画像をコピー（デスクトップ）
-          const item = new ClipboardItem({ 'image/png': blob });
-          await navigator.clipboard.write([item]);
-          
-          // Twitterの共有URLを開く
-          const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-          
-          alert('診断結果の画像をクリップボードにコピーしました！\nTwitterで画像を貼り付けて投稿してください。');
-          window.open(shareUrl, '_blank');
-        } catch (clipboardError) {
-          // クリップボードAPIが使えない場合、画像をダウンロード
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = `okada-4types-${resultType.name}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
-          
-          const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-          
-          alert('診断結果の画像をダウンロードしました！\nTwitterで画像を添付して投稿してください。');
-          window.open(shareUrl, '_blank');
-        }
-        
-        setIsGeneratingImage(false);
-      }, 'image/png');
-    } catch (error) {
-      console.error('画像生成エラー:', error);
-      setIsGeneratingImage(false);
-      
-      // フォールバック: 画像なしで共有
-      const text = `私の欲求タイプは【${resultType.name}】でした！\nキーワード：${resultType.keyword}\n\n#岡田斗司夫4タイプ診断`;
-      const url = "https://okada-4types.vercel.app/";
-      const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-      window.open(shareUrl, '_blank');
-    }
+  const handleTwitterShare = () => {
+    if (!resultType) return;
+    const text = `岡田斗司夫の4タイプ診断やってみたら「${resultType.name}」だった\nあなたはどのタイプ？\n\n#岡田斗司夫4タイプ診断\n`;
+    const url = "https://okada-4types.vercel.app/";
+    const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(shareUrl, '_blank');
   };
 
   const plotX = clamp(50 + (scores.x * 8), 5, 95);
@@ -472,12 +347,6 @@ export default function App() {
             岡田斗司夫の4タイプ診断
           </h1>
         </header>
-
-        {/* === AdSense: ヘッダー下 === */}
-        {/* 広告ユニット作成後、slot IDを設定してください。例: slot="1234567890" */}
-        {step === 'intro' && (
-          <AdSenseUnit slot="" format="auto" className="mb-6" />
-        )}
 
         {/* Content Area */}
         <main className="flex-grow flex flex-col items-center justify-center w-full">
@@ -587,190 +456,155 @@ export default function App() {
           )}
 
           {step === 'result' && resultType && (
-            <div className="w-full animate-in zoom-in-95 duration-500 space-y-8 pb-4">
+            <div className="w-full animate-in zoom-in-95 duration-500 pb-4">
 
-              {/* === AdSense: 結果表示前 === */}
-              <AdSenseUnit slot="" format="auto" className="mb-4" />
+              {/* ============================================================ */}
+              {/* First Screen: スクショ用 — モバイル1画面に収まるカード        */}
+              {/* ============================================================ */}
+              <div className={`relative overflow-hidden rounded-2xl bg-white shadow-2xl border-2 ${resultType.borderColor}`}>
+                <div className={`absolute top-0 left-0 w-full h-16 ${resultType.color} opacity-10`}></div>
+                <div className="relative px-5 pt-5 pb-4">
 
-              {/* Result Card */}
-              <div ref={resultCardRef} className={`relative overflow-hidden rounded-3xl bg-white shadow-2xl border-4 ${resultType.borderColor}`}>
-                <div className={`absolute top-0 left-0 w-full h-24 ${resultType.color} opacity-10`}></div>
-                <div className="relative p-8 text-center">
-                  <div className={`inline-flex p-4 rounded-full ${resultType.color} text-white mb-4 shadow-md`}>
-                    {React.createElement(resultType.icon, { size: 32 })}
-                  </div>
-                  <div className="mb-6">
-                    <p className="text-xs text-slate-500 font-bold tracking-wider uppercase mb-1">YOUR TYPE</p>
-                    <h2 className={`text-4xl font-black ${resultType.textColor} mb-2`}>{resultType.name}</h2>
-                    <p className="text-lg font-medium text-slate-600">{resultType.alias}</p>
-                  </div>
-                  <div className="inline-block px-4 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold mb-6 border border-slate-200">
-                    キーワード：{resultType.keyword}
+                  {/* Type Header */}
+                  <div className="text-center mb-3">
+                    <div className={`inline-flex p-2.5 rounded-full ${resultType.color} text-white mb-2 shadow-md`}>
+                      {React.createElement(resultType.icon, { size: 24 })}
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase mb-0.5">YOUR TYPE</p>
+                    <h2 className={`text-3xl font-black ${resultType.textColor} leading-tight`}>{resultType.name}</h2>
+                    <p className="text-sm font-medium text-slate-500">{resultType.alias}</p>
+                    <div className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold mt-1.5 border border-slate-200">
+                      キーワード：{resultType.keyword}
+                    </div>
                   </div>
 
-                  <div className="text-left bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6">
-                    <p className="text-slate-700 leading-relaxed text-sm mb-4">
+                  {/* Description + Meta — compact */}
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-3">
+                    <p className="text-slate-700 leading-relaxed text-xs">
                       {resultType.detail}
                     </p>
-                    <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 pt-4 border-t border-slate-200">
-                      <div className="flex gap-2">
-                         <span className="font-bold min-w-[50px]">有名人:</span>
-                         <span>{resultType.famous}</span>
+                    <div className="grid grid-cols-1 gap-1 text-[11px] text-slate-500 pt-2 mt-2 border-t border-slate-200">
+                      <div className="flex gap-1.5">
+                        <span className="font-bold shrink-0">有名人:</span>
+                        <span>{resultType.famous}</span>
                       </div>
-                      <div className="flex gap-2">
-                         <span className="font-bold min-w-[50px]">弱点:</span>
-                         <span>{resultType.weakness}</span>
+                      <div className="flex gap-1.5">
+                        <span className="font-bold shrink-0">弱点:</span>
+                        <span>{resultType.weakness}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chart + Compatibility — side by side on mobile */}
+                  <div className="flex gap-3 items-center">
+                    {/* Mini Chart */}
+                    <div className="shrink-0">
+                      <div className="relative w-[120px] h-[120px] bg-slate-50 rounded-lg border border-slate-200">
+                        {/* Axes */}
+                        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-300 -translate-x-1/2"></div>
+                        <div className="absolute left-0 right-0 top-1/2 h-px bg-slate-300 -translate-y-1/2"></div>
+                        {/* Axis Labels */}
+                        <span className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-slate-400">外向</span>
+                        <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-slate-400">内向</span>
+                        <span className="absolute top-1/2 left-0.5 -translate-y-1/2 text-[7px] font-bold text-slate-400 writing-vertical-lr">具体</span>
+                        <span className="absolute top-1/2 right-0.5 -translate-y-1/2 text-[7px] font-bold text-slate-400 writing-vertical-lr">抽象</span>
+                        {/* Quadrant Labels */}
+                        <span className={`absolute top-3 left-2 text-[8px] font-bold ${resultType.name === "司令型" ? "text-red-500" : "text-slate-300"}`}>司令</span>
+                        <span className={`absolute top-3 right-2 text-[8px] font-bold ${resultType.name === "注目型" ? "text-yellow-500" : "text-slate-300"}`}>注目</span>
+                        <span className={`absolute bottom-3 left-2 text-[8px] font-bold ${resultType.name === "法則型" ? "text-blue-500" : "text-slate-300"}`}>法則</span>
+                        <span className={`absolute bottom-3 right-2 text-[8px] font-bold ${resultType.name === "理想型" ? "text-purple-500" : "text-slate-300"}`}>理想</span>
+                        {/* User Plot */}
+                        <div
+                          className={`absolute w-4 h-4 rounded-full border-[3px] border-white shadow-lg ${resultType.color} z-10 transition-all duration-1000 ease-out`}
+                          style={{ left: `${plotX}%`, top: `${plotY}%`, transform: 'translate(-50%, -50%)' }}
+                        >
+                          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[8px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 animate-in fade-in delay-1000 fill-mode-forwards">
+                            YOU
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Compatibility — stacked */}
+                    <div className="flex-1 flex flex-col gap-2 min-w-0">
+                      <h4 className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                        <Users size={11} /> 相性
+                      </h4>
+                      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-2.5 rounded-lg border border-yellow-100">
+                        <div className="flex items-center gap-1 text-orange-600 font-bold text-[10px] mb-0.5">
+                          <Sparkles size={10} /> 憧れるタイプ
+                        </div>
+                        <p className="text-xs font-bold text-slate-800">{resultType.partners.good.type}</p>
+                        <p className="text-[10px] text-slate-500 leading-snug">{resultType.partners.good.reason}</p>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-1 text-slate-400 font-bold text-[10px] mb-0.5">
+                          <AlertTriangle size={10} /> 理解し合えないタイプ
+                        </div>
+                        <p className="text-xs font-bold text-slate-700">{resultType.partners.bad.type}</p>
+                        <p className="text-[10px] text-slate-500 leading-snug">{resultType.partners.bad.reason}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* X (Twitter) Share Button */}
-                  <button
-                    onClick={handleTwitterShare}
-                    disabled={isGeneratingImage}
-                    className="w-full mb-6 py-3 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGeneratingImage ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        <span>画像を生成中...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-bold text-lg">𝕏</span> 結果をポストする
-                      </>
-                    )}
-                  </button>
-
-                  {/* === AdSense: 結果カード内（シェアボタン下） === */}
-                  <AdSenseUnit slot="" format="auto" className="mb-6" />
-
-                  {/* Compatibility Section */}
-                  <div className="text-left pt-6 border-t border-slate-200">
-                    <h3 className="text-center font-bold text-slate-700 mb-4 flex items-center justify-center gap-2">
-                      <Users size={16} /> 相性と人間関係
-                    </h3>
-                    <div className="space-y-3">
-                      {/* Good / Admire */}
-                      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border border-yellow-100">
-                         <div className="flex items-center gap-2 mb-1 text-orange-600 font-bold text-sm">
-                           <Sparkles size={14} /> あなたが憧れるタイプ
-                         </div>
-                         <p className="text-sm font-bold text-slate-800 mb-1">
-                           {resultType.partners.good.type}
-                         </p>
-                         <p className="text-xs text-slate-600">
-                           {resultType.partners.good.reason}
-                         </p>
-                      </div>
-                      {/* Bad / Conflict */}
-                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 opacity-80">
-                         <div className="flex items-center gap-2 mb-1 text-slate-500 font-bold text-sm">
-                           <AlertTriangle size={14} /> 理解し合えないタイプ（対角線）
-                         </div>
-                         <p className="text-sm font-bold text-slate-700 mb-1">
-                           {resultType.partners.bad.type}
-                         </p>
-                         <p className="text-xs text-slate-500">
-                           {resultType.partners.bad.reason}
-                         </p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Site branding — screenshot に含まれる */}
+                  <p className="text-center text-[9px] text-slate-300 mt-3">okada-4types.vercel.app</p>
                 </div>
               </div>
 
-              {/* Chart */}
-              <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-                <h3 className="text-center font-bold text-slate-800 mb-6 text-sm flex items-center justify-center gap-2">
-                   <Target size={14}/> 診断結果チャート
-                </h3>
-                <div className="relative w-full aspect-square max-w-[280px] mx-auto bg-slate-50 rounded-lg border border-slate-200 mb-2">
-                  {/* Axes */}
-                  <div className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-300 transform -translate-x-1/2"></div>
-                  <div className="absolute left-0 right-0 top-1/2 h-px bg-slate-300 transform -translate-y-1/2"></div>
+              {/* ============================================================ */}
+              {/* Below the fold: Share / Links / Retry                        */}
+              {/* ============================================================ */}
+              <div className="mt-6 space-y-4">
 
-                  {/* Labels */}
-                  <span className="absolute top-2 left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-slate-500 bg-white px-1 border border-slate-200 rounded">外向的</span>
-                  <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-slate-500 bg-white px-1 border border-slate-200 rounded">内向的</span>
-                  <span className="absolute top-1/2 left-1 transform -translate-y-1/2 text-[10px] font-bold text-slate-500 bg-white px-1 border border-slate-200 rounded writing-vertical-lr">具体的</span>
-                  <span className="absolute top-1/2 right-1 transform -translate-y-1/2 text-[10px] font-bold text-slate-500 bg-white px-1 border border-slate-200 rounded writing-vertical-lr">抽象的</span>
+                {/* X (Twitter) Share Button */}
+                <button
+                  onClick={handleTwitterShare}
+                  className="w-full py-3.5 bg-black text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                >
+                  <span className="font-bold text-lg">𝕏</span> 結果をポストする
+                </button>
 
-                  {/* Quadrant Labels */}
-                  <div className="absolute top-0 left-0 w-1/2 h-1/2 flex items-center justify-center pointer-events-none">
-                    <span className={`text-xs font-bold ${resultType.name === "司令型" ? "text-red-500" : "text-slate-300"}`}>司令型</span>
-                  </div>
-                  <div className="absolute top-0 right-0 w-1/2 h-1/2 flex items-center justify-center pointer-events-none">
-                    <span className={`text-xs font-bold ${resultType.name === "注目型" ? "text-yellow-500" : "text-slate-300"}`}>注目型</span>
-                  </div>
-                  <div className="absolute bottom-0 left-0 w-1/2 h-1/2 flex items-center justify-center pointer-events-none">
-                    <span className={`text-xs font-bold ${resultType.name === "法則型" ? "text-blue-500" : "text-slate-300"}`}>法則型</span>
-                  </div>
-                  <div className="absolute bottom-0 right-0 w-1/2 h-1/2 flex items-center justify-center pointer-events-none">
-                    <span className={`text-xs font-bold ${resultType.name === "理想型" ? "text-purple-500" : "text-slate-300"}`}>理想型</span>
-                  </div>
-
-                  {/* User Plot */}
-                  <div
-                    className={`absolute w-5 h-5 rounded-full border-4 border-white shadow-xl ${resultType.color} z-10 transition-all duration-1000 ease-out`}
-                    style={{
-                      left: `${plotX}%`,
-                      top: `${plotY}%`,
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  >
-                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 animate-in fade-in delay-1000 fill-mode-forwards">
-                      YOU
-                    </div>
+                {/* Official Links */}
+                <div className="bg-slate-100 p-4 rounded-xl border border-slate-200">
+                  <h3 className="font-bold text-slate-700 mb-2 text-xs flex items-center gap-1.5">
+                    <ExternalLink size={12} /> 公式コンテンツ（本家）
+                  </h3>
+                  <div className="space-y-2">
+                    <a href="https://www.youtube.com/@toshiookada0701" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2.5 bg-white rounded-lg hover:bg-red-50 transition-colors group">
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-red-600 text-white p-1.5 rounded-full">
+                          <ExternalLink size={11} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-800">岡田斗司夫 YouTube</p>
+                          <p className="text-[10px] text-slate-500">本人の詳細な解説動画で学ぶ</p>
+                        </div>
+                      </div>
+                      <ArrowRight size={13} className="text-slate-300 group-hover:text-red-500" />
+                    </a>
+                    <a href="https://amzn.to/3O3J7Yx" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2.5 bg-white rounded-lg hover:bg-orange-50 transition-colors group">
+                      <div className="flex items-center gap-2.5">
+                        <div className="bg-orange-500 text-white p-1.5 rounded-full">
+                          <BookOpen size={11} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-800">書籍『人生の法則』(Amazon)</p>
+                          <p className="text-[10px] text-slate-500">4タイプ理論の決定版テキスト</p>
+                        </div>
+                      </div>
+                      <ArrowRight size={13} className="text-slate-300 group-hover:text-orange-500" />
+                    </a>
                   </div>
                 </div>
+
+                <button
+                  onClick={handleStart}
+                  className="w-full py-3.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <RotateCcw size={15} /> 最初からやり直す
+                </button>
               </div>
-
-              {/* === AdSense: チャートと公式リンクの間 === */}
-              <AdSenseUnit slot="" format="auto" className="mb-6" />
-
-              {/* Official Links & Affiliate */}
-              <div className="bg-slate-100 p-5 rounded-xl border border-slate-200">
-                <h3 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
-                  <ExternalLink size={14} /> 公式コンテンツ（本家）
-                </h3>
-                <div className="space-y-2">
-                  <a href="https://www.youtube.com/@toshiookada0701" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-red-50 transition-colors group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-red-600 text-white p-1.5 rounded-full">
-                         <ExternalLink size={12} />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold text-slate-800">岡田斗司夫 YouTube</p>
-                        <p className="text-[10px] text-slate-500">本人の詳細な解説動画で学ぶ</p>
-                      </div>
-                    </div>
-                    <ArrowRight size={14} className="text-slate-300 group-hover:text-red-500" />
-                  </a>
-                  <a href="https://amzn.to/3O3J7Yx" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-white rounded-lg hover:bg-orange-50 transition-colors group">
-                    <div className="flex items-center gap-3">
-                       <div className="bg-orange-500 text-white p-1.5 rounded-full">
-                         <BookOpen size={12} />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold text-slate-800">書籍『人生の法則』(Amazon)</p>
-                        <p className="text-[10px] text-slate-500">4タイプ理論の決定版テキスト</p>
-                      </div>
-                    </div>
-                    <ArrowRight size={14} className="text-slate-300 group-hover:text-orange-500" />
-                  </a>
-                </div>
-              </div>
-
-              {/* === AdSense: フッター上 === */}
-              <AdSenseUnit slot="" format="auto" className="mb-6" />
-
-              <button
-                onClick={handleStart}
-                className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                <RotateCcw size={16} /> 最初からやり直す
-              </button>
             </div>
           )}
 

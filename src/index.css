@@ -49,16 +49,3 @@
 .writing-vertical-lr {
   writing-mode: vertical-lr;
 }
-
-/* Google AdSense styling */
-.ad-container {
-  min-height: 100px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.ad-container ins.adsbygoogle {
-  display: block !important;
-  text-align: center;
-}
