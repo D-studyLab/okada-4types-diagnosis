@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://okada-4types.vercel.app/sitemap.xml
